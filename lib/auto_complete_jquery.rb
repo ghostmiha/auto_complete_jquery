@@ -57,10 +57,16 @@ module AutoCompleteJquery
   #
   # When passed array of fields used conditions for search only by this fields
   #
-  # auto_complete_for :tag, :name, :sphinx_search_by => [:name] (Search only by sphinx field :name)
-  # auto_complete_for :tag, [:first_name, :last_name], :sphinx_search_by => [:first_name, :last_name] (Search only by sphinx fields :first_name and :last_name)
-  # auto_complete_for :tag, [:first_name, :last_name], :sphinx_search_by => [:name] (Search only by sphinx field :name)
-  # For last case you may have next sphinx configuration
+  # Search only by sphinx field :name
+  # auto_complete_for :tag, :name, :sphinx_search_by => [:name]
+  #
+  # Search only by sphinx fields :first_name and :last_name
+  # auto_complete_for :tag, [:first_name, :last_name], :sphinx_search_by => [:first_name, :last_name]
+  #
+  # Search only by sphinx field :name
+  # auto_complete_for :tag, [:first_name, :last_name], :sphinx_search_by => [:name]
+  #
+  # For last example you may have next sphinx configuration
   # define_index do
   #  indexes description
   #  indexes [:first_name, :last_name], :as => :name, :sortable => true

@@ -13,6 +13,8 @@ those are not needed when using jQuery and Unobtrusive JavaScript.
 To use this, you need to have jQuery and the autocomplete plugin mentioned 
 above, as well as appropriate CSS.  A modified plugin and CSS are included.
 
+You may use sphinx search instead of SQL.
+
 REQUIREMENTS:
 =============
 
@@ -138,6 +140,33 @@ usually call it at the top where I put my filters, etc.
       # "name|id\nname|id\n"
       auto_complete_for :tag, :name, :collection_instance_variable => :tags
     end
+
+###Skip SQL and use sphinx search
+
+   class BlogController < ApplicationController
+      # 
+      # pass array of sphinx indexes fields or :all symbol for use sphinx search instend of SQL query.
+      #
+      # When passed symbol :all used sphix method search without any conditions by all sphinx fields which indexes in model.
+      #
+      auto_complete_for :tag, :name, :sphinx_search_by => :all #(Used all indexes fields - tag.name, tag.descriptions, etc)
+      #
+      # When passed array of fields used conditions for search only by this fields
+      #
+      auto_complete_for :tag, :name, :sphinx_search_by => [:name]
+       
+      #Search only by sphinx fields :first_name and :last_name
+      auto_complete_for :tag, [:first_name, :last_name], :sphinx_search_by => [:first_name, :last_name] 
+
+      auto_complete_for :tag, [:first_name, :last_name], :sphinx_search_by => [:name]
+      # For last example you may have next sphinx configuration
+      # define_index do
+      # indexes description
+      #  indexes [:first_name, :last_name], :as => :name, :sortable => true
+      # end
+     
+    end
+
 
 Options hash
 ------------
