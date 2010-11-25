@@ -46,6 +46,26 @@ module AutoCompleteJquery
   #
   # example, pull data from @tags, no SQL used:
   # auto_complete_for :tag, :name, :collection_instance_variable => :tags
+  #
+  # :sphinx_search_by
+  #
+  # pass array of sphinx fields or :all symbol for use sphinx search instend of SQL query.
+  #
+  # When passed symbol :all used sphix method search without any conditions by all sphinx fields which indexes in model.
+  #
+  # auto_complete_for :tag, :name, :sphinx_search_by => :all (Used all indexes fields - tag.name, tag.descriptions, etc)
+  #
+  # When passed array of fields used conditions for search only by this fields
+  #
+  # auto_complete_for :tag, :name, :sphinx_search_by => [:name] (Search only by sphinx field :name)
+  # auto_complete_for :tag, [:first_name, :last_name], :sphinx_search_by => [:first_name, :last_name] (Search only by sphinx fields :first_name and :last_name)
+  # auto_complete_for :tag, [:first_name, :last_name], :sphinx_search_by => [:name] (Search only by sphinx field :name)
+  # For last case you may have next sphinx configuration
+  # define_index do
+  #  indexes description
+  #  indexes [:first_name, :last_name], :as => :name, :sortable => true
+  # end
+
   
   module ClassMethods
 
@@ -70,6 +90,8 @@ module AutoCompleteJquery
 
         collection_instance_variable = ac_options.delete(:collection_instance_variable)
 
+        sphinx_fields = ac_options.delete(:sphinx_search_by)
+
         if collection_instance_variable
           collection = instance_variable_get('@' + collection_instance_variable.to_s)
           if collection
@@ -86,28 +108,53 @@ module AutoCompleteJquery
             end
           end
         else
-          # assemble the conditions
-          conditions = ""
-          selects = "#{object_constant.table_name}.id,"
-          method = [method] unless method.is_a?(Array)
-          method.each do |arg|
-            conditions << "LOWER(#{arg}) LIKE ?"
-            conditions << " OR " unless arg == method.last
+          if sphinx_fields.blank?
+            # assemble the conditions
+            conditions = ""
+            selects = "#{object_constant.table_name}.id,"
+            method = [method] unless method.is_a?(Array)
+            method.each do |arg|
+              conditions << "LOWER(#{arg}) LIKE ?"
+              conditions << " OR " unless arg == method.last
 
-            selects << "#{object_constant.table_name}.#{arg}"
-            selects << "," unless arg == method.last
+              selects << "#{object_constant.table_name}.#{arg}"
+              selects << "," unless arg == method.last
+            end
+            conditions = Array(conditions)
+            filters = Array("%#{params[:q].to_s.downcase}%")*method.length
+            filters.each { |filter| conditions.push filter }
+
+            # These options can be overridden by the subsequent merge ac_options below
+            find_options = {
+              :conditions => conditions,
+              :select => selects,
+              :limit => limit }.merge!(ac_options)
+
+            items = object_constant.find(:all, find_options)
+          else
+            if sphinx_fields.is_a?(Array)
+              items = []
+              sphinx_fields.each do |field|
+                items += object_constant.search(:conditions => {field.to_s => "#{params[:q]}"}, :star => true, :per_page => limit)
+              end
+              if sphinx_fields.size > 1 && !items.blank?
+                uniq_items = [items[0]]
+                ids = [items[0].id]
+                items[1..-1].each do |item|
+                  unless ids.include?(item.id)
+                    uniq_items << item
+                    ids << item.id
+                  end
+                end
+                items = uniq_items
+                items.sort! { |a, b| a.send(method.first) <=> b.send(method.first) }
+                # truncate at limit exclusive of the "limit" endpoint
+                items = items[0...limit]
+              end
+            else
+              items = object_constant.search(params[:q], :star => true, :per_page => limit) if sphinx_fields.to_s == "all"
+            end
           end
-          conditions = Array(conditions)
-          filters = Array("%#{params[:q].to_s.downcase}%")*method.length
-          filters.each { |filter| conditions.push filter }
-          
-          # These options can be overridden by the subsequent merge ac_options below
-          find_options = { 
-            :conditions => conditions, 
-            :select => selects,
-            :limit => limit }.merge!(ac_options)
-          
-          items = object_constant.find(:all, find_options)
         end
 
         content = ""
