@@ -143,7 +143,7 @@ usually call it at the top where I put my filters, etc.
 
 ###Skip SQL and use sphinx search
 
-   class BlogController < ApplicationController
+    class BlogController < ApplicationController
       # 
       # pass array of sphinx indexes fields or :all symbol for use sphinx search instend of SQL query.
       #
