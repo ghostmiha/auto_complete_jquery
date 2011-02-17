@@ -47,6 +47,29 @@ module AutoCompleteJquery
   # example, pull data from @tags, no SQL used:
   # auto_complete_for :tag, :name, :collection_instance_variable => :tags
   #
+  # :associations
+  #
+  # pass hash where 'key' is 'name of association' and 'value' is separate attribute or array of association attributes
+  # This option works only when used ActiveRecord.
+  #
+  # Example,
+  #
+  # class Post
+  #   belongs_to :author
+  # end
+  #
+  # class Author
+  #   has_many :posts
+  # end
+  #
+  # class PostsController
+  #   auto_complete_for :post, :title, :associations => {:author => :name}
+  #   #or
+  #   auto_complete_for :post, :title, :associations => {:author => [:first_name, :lastname]}
+  # #...
+  # end
+  # 
+  #
   # :sphinx_search_by
   #
   # pass array of sphinx fields or :all symbol for use sphinx search instend of SQL query.
@@ -92,7 +115,9 @@ module AutoCompleteJquery
         
         delimiter = ac_options[:delimiter]
         ac_options.delete :delimiter
-        limit = ac_options[:limit] || 10 
+        limit = ac_options[:limit] || 10
+        associations = ac_options[:associations] if !ac_options[:associations].blank? && ac_options[:associations].is_a?(Hash)
+        ac_options.delete :associations
 
         collection_instance_variable = ac_options.delete(:collection_instance_variable)
 
@@ -116,18 +141,39 @@ module AutoCompleteJquery
         else
           if sphinx_fields.blank?
             # assemble the conditions
+            association_selects = ""
+            association_conditions = ""
             conditions = ""
             selects = "#{object_constant.table_name}.id,"
             method = [method] unless method.is_a?(Array)
+            fields_count = method.length
             method.each do |arg|
-              conditions << "LOWER(#{arg}) LIKE ?"
+              conditions << "LOWER(#{object_constant.table_name}.#{arg}) LIKE ?"
               conditions << " OR " unless arg == method.last
 
               selects << "#{object_constant.table_name}.#{arg}"
               selects << "," unless arg == method.last
             end
+            unless associations.blank?
+              associations.each do |association,methods|
+                association_table_name = object_constant.reflections[association.to_sym].table_name
+                fields = [methods] unless methods.is_a?(Array)
+                fields_count += fields.length
+                fields.each do |arg|
+                  association_conditions << "LOWER(#{association_table_name}.#{arg}) LIKE ?"
+                  association_conditions << " OR " unless arg == fields.last
+
+                  association_selects << "#{association_table_name}.#{arg}"
+                  association_selects << "," unless arg == fields.last
+                end
+              end
+            end
+
+            conditions += " OR " + association_conditions unless association_conditions.blank?
+            selects += ", " + association_selects unless association_selects.blank?
+            
             conditions = Array(conditions)
-            filters = Array("%#{params[:q].to_s.downcase}%")*method.length
+            filters = Array("%#{params[:q].to_s.downcase}%")*fields_count
             filters.each { |filter| conditions.push filter }
 
             # These options can be overridden by the subsequent merge ac_options below
@@ -136,6 +182,8 @@ module AutoCompleteJquery
               :select => selects,
               :limit => limit }.merge!(ac_options)
 
+            find_options.merge!({:include => associations.keys}) unless associations.blank?
+            
             items = object_constant.find(:all, find_options)
           else
             if sphinx_fields.is_a?(Array)
@@ -172,6 +220,11 @@ module AutoCompleteJquery
             method.each do |m|
               values << item.send(m)
             end
+            unless associations.blank?
+              associations.each do |a,m|
+                values << item.send(a.to_sym).send(m.to_s)
+              end
+            end
             "#{values.join(delimiter)}|#{item.send(object_constant.primary_key)}"
           }.join("\n")
         end
@@ -183,3 +236,4 @@ module AutoCompleteJquery
   end
   
 end
+ActionController::Base.send :include, AutoCompleteJquery

@@ -128,6 +128,30 @@ usually call it at the top where I put my filters, etc.
       auto_complete_for :post, [:title, :created_at], :delimiter => ","
     end
 
+###Use model associations in autocomplete
+
+  class BlogController < ApplicationController
+    #
+    # Ooption: :associations => {:author => :name}
+    #
+    # pass hash where 'key' is 'name of association' and 'value' is separate attribute or array of association attributes
+    # This option works only when for search used ActiveRecord.
+    # 
+    # Example, 
+    # 
+    # class Post
+    #   belongs_to :author
+    # end
+    # 
+    # class Author
+    #   has_many :posts
+    # end
+    # 
+    auto_complete_for :post, :title, :associations => {:author => :name}
+    #or 
+    auto_complete_for :post, :title, :associations => {:author => [:first_name, :lastname]}
+  end
+
 ###Skip SQL and use and instance variable 
 
     class BlogController < ApplicationController
@@ -144,7 +168,9 @@ usually call it at the top where I put my filters, etc.
 ###Skip SQL and use sphinx search
 
     class BlogController < ApplicationController
-      # 
+      #    
+      # Option :sphinx_search_by => [:name]
+      #
       # pass array of sphinx indexes fields or :all symbol for use sphinx search instend of SQL query.
       #
       # When passed symbol :all used sphix method search without any conditions by all sphinx fields which indexes in model.
