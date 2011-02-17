@@ -25,7 +25,7 @@ INSTALLATION:
 
 Install this plugin 
 
-      ./script/plugin install git://github.com/robertwahler/auto_complete_jquery.git
+      ./script/plugin install git@github.com:ghostmiha/auto_complete_jquery.git
 
 Copy the modified jquery.autocomplete.js and assets to your project's public folder 
 
