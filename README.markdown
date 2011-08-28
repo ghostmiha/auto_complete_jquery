@@ -236,7 +236,7 @@ In the above example, Autocomplete expects an input element with the id "input_b
 
 The backend should output possible values for the autocompleter, each on a single line. Output cannot contain the pipe symbol "|", since that is considered a separator (more on that later).
 
-An appropiate simple output would be:
+An appropriate simple output would be:
 
 foo
 fool
